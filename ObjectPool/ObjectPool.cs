@@ -8,6 +8,7 @@
         private readonly int[] _slots;
         private readonly PooledObject<T>?[] _pooledObjects;
         private readonly SemaphoreSlim _semaphore;
+        private readonly ReaderWriterLockSlim _readerWriterLock;
         private readonly Timer _evictionTimer;
 
         private bool _disposed;
@@ -21,6 +22,7 @@
             _slots = Enumerable.Repeat(SlotState.Free, _maxPoolSize).ToArray();
             _pooledObjects = Enumerable.Repeat<PooledObject<T>?>(null, _maxPoolSize).ToArray();
             _semaphore = new SemaphoreSlim(_maxPoolSize*Environment.ProcessorCount);
+            _readerWriterLock = new ReaderWriterLockSlim();
             _evictionTimer = new Timer(Evict, this, 0, 100);
         }
 
@@ -35,8 +37,11 @@
             ThrowIfDisposed();
 
             var timedCancellationToken = cancellationToken.CancelAfter(_waitTimeout);
+
             try
             {
+                _readerWriterLock.EnterReadLock();
+
                 await _semaphore.WaitAsync(timedCancellationToken);
 
                 while (true)
@@ -77,6 +82,7 @@
             finally
             {
                 _semaphore.Release();
+                _readerWriterLock.ExitReadLock();
             }
         }
 
@@ -93,28 +99,37 @@
         {
             ThrowIfDisposed();
 
-            var i = 0;
-            for (; i < _maxPoolSize; i++)
+            try
             {
-                if (Interlocked.CompareExchange(ref _slots[i], 1, 0) == 0)
-                {
-                    var pooledObject = _pooledObjects[i];
+                _readerWriterLock.EnterReadLock();
 
-                    try
+                var i = 0;
+                for (; i < _maxPoolSize; i++)
+                {
+                    if (Interlocked.CompareExchange(ref _slots[i], 1, 0) == 0)
                     {
-                        if (pooledObject is not null)
+                        var pooledObject = _pooledObjects[i];
+
+                        try
                         {
-                            Console.WriteLine("Evicting");
-                            ReleasePooledObject(pooledObject.Object);
-                            Console.WriteLine("Evicted");
+                            if (pooledObject is not null)
+                            {
+                                Console.WriteLine("Evicting");
+                                ReleasePooledObject(pooledObject.Object);
+                                Console.WriteLine("Evicted");
+                            }
+                        }
+                        finally
+                        {
+                            _slots[i] = 0;
+                            _pooledObjects[i] = null;
                         }
                     }
-                    finally
-                    {
-                        _slots[i] = 0;
-                        _pooledObjects[i] = null;
-                    }
                 }
+            }
+            finally
+            {
+                _readerWriterLock.ExitReadLock();
             }
         }
 
@@ -137,42 +152,52 @@
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed)
+            try
             {
-                if (disposing)
-                {
-                    _semaphore?.Dispose();
-                    _evictionTimer?.Dispose();
-                }
+                _readerWriterLock.EnterWriteLock();
 
-                var done = false;
-                while (!done)
+                if (!_disposed)
                 {
-                    var i = 0;
-                    for (; i < _maxPoolSize; i++)
+                    if (disposing)
                     {
-                        if (Interlocked.CompareExchange(ref _slots[i], 2, 0) == 0)
-                        {
-                            var pooledObject = _pooledObjects[i];
+                        _semaphore?.Dispose();
+                        _evictionTimer?.Dispose();
+                        _readerWriterLock?.Dispose();
+                    }
 
-                            if (pooledObject is not null)
+                    var done = false;
+                    while (!done)
+                    {
+                        var i = 0;
+                        for (; i < _maxPoolSize; i++)
+                        {
+                            if (Interlocked.CompareExchange(ref _slots[i], 2, 0) == 0)
                             {
-                                try
+                                var pooledObject = _pooledObjects[i];
+
+                                if (pooledObject is not null)
                                 {
-                                    ReleasePooledObject(pooledObject.Object);
-                                }
-                                catch
-                                {
-                                    Interlocked.Exchange(ref _slots[i], 0);
+                                    try
+                                    {
+                                        ReleasePooledObject(pooledObject.Object);
+                                    }
+                                    catch
+                                    {
+                                        Interlocked.Exchange(ref _slots[i], 0);
+                                    }
                                 }
                             }
                         }
+
+                        done = _slots.All(e => e == 2);
                     }
 
-                    done = _slots.All(e => e == 2);
+                    _disposed = true;
                 }
-
-                _disposed = true;
+            }    
+            finally
+            {
+                _readerWriterLock.ExitWriteLock();
             }
         }
 
