@@ -34,13 +34,13 @@
 
         public async Task<PooledObject<T>> Get(CancellationToken cancellationToken)
         {
-            ThrowIfDisposed();
-
             var timedCancellationToken = cancellationToken.CancelAfter(_waitTimeout);
 
             try
             {
                 _readerWriterLock.EnterReadLock();
+
+                ThrowIfDisposed();
 
                 await _semaphore.WaitAsync(timedCancellationToken);
 
