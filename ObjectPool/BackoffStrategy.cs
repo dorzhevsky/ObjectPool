@@ -1,6 +1,4 @@
-﻿using System.Threading;
-
-namespace ConsoleApp1
+﻿namespace ObjectPool
 {
     public class BackoffStrategy
     {
@@ -19,7 +17,7 @@ namespace ConsoleApp1
 
         public Task Delay(CancellationToken cancellationToken)
         {
-            if (_retries < 31) 
+            if (_retries < 31)
             {
                 _pow = 1 << _retries;
             }

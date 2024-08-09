@@ -1,13 +1,10 @@
-﻿using System.Data.Common;
-
-
-namespace ConsoleApp1
+﻿namespace ObjectPool
 {
-    public class PooledObject<T> : IDisposable where T:  class
+    public class PooledObject<T> : IDisposable
     {
         private readonly ObjectPool<T> _objectPool;
         private readonly T _object;
-            
+
         public PooledObject(ObjectPool<T> objectPool, T @object)
         {
             _objectPool = objectPool;
