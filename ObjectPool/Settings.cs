@@ -8,7 +8,7 @@
 
         public Settings()
         {
-            Name = string.Format("ObjectPool_{0}", Guid.NewGuid().ToString());
+            Name = string.Format("{0}_{1}", Constants.ObjectPool, Guid.NewGuid().ToString());
             MaxPoolSize = 100;
             WaitingTimeout = 3000;
             EvictionInterval = 1000;

@@ -4,7 +4,7 @@ namespace ObjectPool
 {
     public class TelemetryListener: ITelemetryListener
     {
-        private static readonly Meter meter = new("ObjectPool");
+        private static readonly Meter meter = new(Constants.ObjectPool);
         private readonly KeyValuePair<string, object?> _tags;
         private readonly UpDownCounter<int> _activeItems;
         private readonly Counter<int> _evictins;
