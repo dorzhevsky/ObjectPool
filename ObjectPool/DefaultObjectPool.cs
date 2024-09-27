@@ -4,7 +4,15 @@
     {
         public DefaultObjectPool() { }
         public DefaultObjectPool(Settings settings) : base(settings) { }
-        protected override Task<T> CreatePooledObject() => Task.FromResult(new T());
-        protected override void ReleasePooledObject(T @object) { }
+        protected override T Create() => new();
+
+        protected override Task Activate(T @object)
+        {
+            return Task.CompletedTask;
+        }
+
+        protected override void Deactivate(T @object)
+        {
+        }
     }
 }

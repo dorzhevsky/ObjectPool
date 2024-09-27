@@ -1,4 +1,6 @@
-﻿namespace ObjectPool
+﻿using Nito.AsyncEx;
+
+namespace ObjectPool
 {
     public abstract class ObjectPool<T> : IDisposable
     {
@@ -7,35 +9,36 @@
         private readonly PooledObject<T>?[] _pooledObjects;
         private readonly SemaphoreSlim _semaphore;
         private readonly Timer _evictionTimer;
-
         private volatile bool _disposed;
-        private volatile bool _disposing;
+        private readonly AsyncReaderWriterLock _lock = new();
 
-        public ObjectPool() : this(Settings.Default)
-        {
-        }
+        protected readonly TelemetryListener _telemetry;
+        public ObjectPool() : this(Settings.Default) {}
 
         public ObjectPool(Settings settings)
         {
             _settings = settings;
 
-            _slots = Enumerable.Repeat(SlotState.Free, _settings.MaxPoolSize).ToArray();
-            _pooledObjects = Enumerable.Repeat<PooledObject<T>?>(null, _settings.MaxPoolSize).ToArray();
-            _semaphore = new SemaphoreSlim(settings.ConcurrencyFactor);
+            _telemetry = new TelemetryListener(_settings.Name);
+            _slots = Enumerable.Repeat(0, _settings.MaxPoolSize).ToArray();
+            _pooledObjects = Enumerable.Range(0, _settings.MaxPoolSize).Select(e => new PooledObject<T>(this, default!)).ToArray();
+            _semaphore = new SemaphoreSlim(_settings.ConcurrencyFactor);
             _evictionTimer = new Timer(Evict, this, 0, _settings.EvictionInterval);
         }
 
         public Task<PooledObject<T>> Get() => Get(CancellationToken.None);
 
         public async Task<PooledObject<T>> Get(CancellationToken cancellationToken)
-        {            
+        {
+            var timedCancellationToken = cancellationToken.CancelAfter(_settings.WaitingTimeout);
+
+            using var _ = _lock.ReaderLock(cancellationToken);
+
+            ThrowIfDisposed();
+
             try
             {
-                ThrowIfDisposed();
-
-                var timedCancellationToken = cancellationToken.CancelAfter(_settings.WaitingTimeout);
-
-                await _semaphore.WaitAsync(timedCancellationToken);
+                await _semaphore.WaitAsync(timedCancellationToken).ConfigureAwait(false);
 
                 var backoff = new BackoffStrategy(_settings.BackoffDelayMilliseconds, _settings.BackoffMaxDelayMilliseconds);
 
@@ -45,28 +48,27 @@
 
                     for (var i = 0; i < _settings.MaxPoolSize; i++)
                     {
-                        if (_disposing)
-                        {
-                            break;
-                        }
-
                         timedCancellationToken.ThrowIfCancellationRequested();
 
-                        if (Interlocked.CompareExchange(ref _slots[i], SlotState.Busy, SlotState.Free) == SlotState.Free)
+                        if (Interlocked.CompareExchange(ref _slots[i], 1, 0) == 0)
                         {
                             try
                             {
-                                if (_pooledObjects[i] is null)
-                                {
-                                    var obj = await CreatePooledObject().ConfigureAwait(false);
-                                    _pooledObjects[i] = new PooledObject<T>(this, obj) { Slot = i };
-                                }
-                                var pooledObject = _pooledObjects[i];
+                                var pooledObject = _pooledObjects[i]!;
+
+                                pooledObject.Object ??= Create();
+                                await Activate(pooledObject.Object).ConfigureAwait(false);
+
+                                pooledObject.LastUsedTimestamp = DateTime.UtcNow;
+                                pooledObject.Slot = i;
+                                
                                 return pooledObject!;
                             }
                             catch (Exception)
                             {
-                                Interlocked.Exchange(ref _slots[i], SlotState.Free);
+                                Interlocked.Exchange(ref _slots[i], 0);
+                                _telemetry.WriteActivateErrorEvent();
+                                break;
                             }
                         }
                     }
@@ -76,49 +78,66 @@
             }
             catch (OperationCanceledException)
             {
+                _telemetry.WriteCancellationErrorEvent();
                 throw new ObjectPoolCancellationException(ErrorMessages.ObjectPoolCancellationExceptionMessage);
             }
             finally
-            {                
+            {
                 _semaphore.Release();
             }
         }
 
+        protected virtual void WriteCancellationError() { }
+
+        protected virtual void WriteGetError() { }
+
         internal void Release(int slot)
         {
             ThrowIfDisposed();
-            Interlocked.Exchange(ref _slots[slot], SlotState.Free);
+            Interlocked.CompareExchange(ref _slots[slot], 0, 1);
         }
 
-        private void Evict(object? state)
+        public void Evict(object? state)
         {
             ThrowIfDisposed();
+
+            _telemetry.WriteEvictEvent();
 
             var i = 0;
             for (; i < _settings.MaxPoolSize; i++)
             {
-                if (Interlocked.CompareExchange(ref _slots[i], SlotState.Busy, SlotState.Free) == SlotState.Free)
+                if (Interlocked.CompareExchange(ref _slots[i], 1, 0) == 0)
                 {
                     var pooledObject = _pooledObjects[i];
 
                     try
                     {
-                        if (pooledObject is not null)
+                        if (pooledObject!.Object is not null)
                         {
-                            ReleasePooledObject(pooledObject.Object);
-                            _pooledObjects[i] = null;
+                            if (pooledObject.LastUsedTimestamp.HasValue
+                                && (DateTime.UtcNow - pooledObject.LastUsedTimestamp.Value).TotalMilliseconds > _settings.EvictionTimeout)
+                            {
+                                Deactivate(pooledObject.Object);
+                            }
                         }
+                    }
+                    catch
+                    {
+                        _telemetry.WriteDeactivateErrorEvent();
                     }
                     finally
                     {
-                        Interlocked.Exchange(ref _slots[i], SlotState.Free);
+                        Interlocked.Exchange(ref _slots[i], 0);
                     }
                 }
-            }
+            }            
         }
 
-        protected abstract Task<T> CreatePooledObject();
-        protected abstract void ReleasePooledObject(T @object);
+        protected abstract T Create();
+        protected abstract Task Activate(T @object);
+        protected abstract void Deactivate(T @object);
+        protected void OnActivated() => _telemetry.WriteActivatedEvent();
+        protected void OnDeactivated() => _telemetry.WriteDeactivatedEvent();
 
         public void Dispose()
         {
@@ -136,55 +155,47 @@
 
         protected virtual void Dispose(bool disposing)
         {
-            try
+            using var _ = _lock.WriterLock();
+
+            if (!_disposed)
             {
-                _disposing = true;
-                if (!_disposed)
+                CleanUp();
+
+                if (disposing)
                 {
-                    CleanUp();
-
-                    if (disposing)
-                    {
-                        _semaphore?.Dispose();
-                        _evictionTimer?.Dispose();
-                    }
-
-                    _disposed = true;
+                    _semaphore?.Dispose();
+                    _evictionTimer?.Dispose();
                 }
-            }
-            catch
-            {
-                _disposing = false;
-            }
+
+                _disposed = true;
+            }            
         }
 
         private void CleanUp()
         {
-            var done = false;
-            while (!done)
+            var processed = 0;
+            while (processed != _settings.MaxPoolSize)
             {
                 var i = 0;
                 for (; i < _settings.MaxPoolSize; i++)
                 {
-                    if (Interlocked.CompareExchange(ref _slots[i], SlotState.Disposed, SlotState.Free) == SlotState.Free)
+                    if (Interlocked.CompareExchange(ref _slots[i], 1, 0) == 0)
                     {
                         var pooledObject = _pooledObjects[i];
-
-                        if (pooledObject is not null)
+                        Interlocked.Increment(ref processed);
+                        if (pooledObject!.Object is not null)
                         {
-                            ReleasePooledObject(pooledObject.Object);
-                            _pooledObjects[i] = null;
+                            try
+                            {
+                                Deactivate(pooledObject.Object);
+                            }
+                            catch
+                            {
+                            }
                         }
                     }
                 }
-
-                done = _slots.All(e => e == SlotState.Disposed);
-            }            
-        }
-
-        ~ObjectPool()
-        {
-            Dispose(false);
+            }
         }
     }
 }

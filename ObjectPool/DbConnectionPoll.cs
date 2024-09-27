@@ -12,21 +12,28 @@ namespace ObjectPool
             _connectionFactory = connectionFactory;
         }
 
-        protected override Task<DbConnection> CreatePooledObject()
+        protected override DbConnection Create()
         {
             var connection = _connectionFactory();
+            return connection;
+        }
+
+        protected override Task Activate(DbConnection connection)
+        {
             if (connection.State != System.Data.ConnectionState.Open)
             {
-                connection.OpenAsync();
+                connection.Open();
+                OnActivated();
             }
             return Task.FromResult(connection);
         }
 
-        protected override void ReleasePooledObject(DbConnection connection)
+        protected override void Deactivate(DbConnection connection)
         {
-            if (connection?.State != System.Data.ConnectionState.Closed)
+            if (connection.State != System.Data.ConnectionState.Closed)
             {
-                connection?.Close();
+                connection.Close();
+                OnDeactivated();
             }
         }
     }

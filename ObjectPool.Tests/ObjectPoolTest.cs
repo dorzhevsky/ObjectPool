@@ -43,7 +43,7 @@ namespace ObjectPool.Tests
         [Test]
         public async Task Get_WhenConstructionFailed_ShouldReleaseSlot()
         {
-            DefaultObjectPool<ErrorPooledObject> pool = new(new Settings { MaxPoolSize = 1, WaitingTimeout = 100 });
+            ErrorObjectPool<StringBuilder> pool = new(new Settings { MaxPoolSize = 1, WaitingTimeout = 100 });
             var obj = await pool.Get(CancellationToken.None);
             Assert.IsNotNull(obj);
         }

@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33110.190
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectPool", "ObjectPool\ObjectPool.csproj", "{20DCADFD-EB7C-4224-B26C-F92C1F79BEC4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ObjectPool", "ObjectPool\ObjectPool.csproj", "{20DCADFD-EB7C-4224-B26C-F92C1F79BEC4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectPool.Tests", "ObjectPool.Tests\ObjectPool.Tests.csproj", "{174FC8FA-E52A-49D5-B91E-8CB2B42C9305}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ObjectPool.Tests", "ObjectPool.Tests\ObjectPool.Tests.csproj", "{174FC8FA-E52A-49D5-B91E-8CB2B42C9305}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectPool.Console", "ObjectPool.Console\ObjectPool.Console.csproj", "{58A11D59-833E-4D9E-AF19-BA30F55A7AE8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ObjectPool.Console", "ObjectPool.Console\ObjectPool.Console.csproj", "{58A11D59-833E-4D9E-AF19-BA30F55A7AE8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

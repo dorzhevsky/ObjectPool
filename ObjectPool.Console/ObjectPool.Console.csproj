@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <PackageReference Include="ClickHouse.Ado" Version="2.0.5" />
+    <PackageReference Include="OpenTelemetry" Version="1.9.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.9.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.9.0" />
   </ItemGroup>
 
   <ItemGroup>
