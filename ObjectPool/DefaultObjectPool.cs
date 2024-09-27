@@ -6,10 +6,7 @@
         public DefaultObjectPool(Settings settings) : base(settings) { }
         protected override T Create() => new();
 
-        protected override Task Activate(T @object)
-        {
-            return Task.CompletedTask;
-        }
+        protected override Task Activate(T @object) => Task.CompletedTask;
 
         protected override void Deactivate(T @object)
         {

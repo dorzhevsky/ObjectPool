@@ -11,8 +11,8 @@ namespace ObjectPool
         private readonly Timer _evictionTimer;
         private volatile bool _disposed;
         private readonly AsyncReaderWriterLock _lock = new();
+        private readonly ITelemetryListener _telemetry;
 
-        protected readonly TelemetryListener _telemetry;
         public ObjectPool() : this(Settings.Default) {}
 
         public ObjectPool(Settings settings)

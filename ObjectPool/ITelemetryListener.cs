@@ -1,6 +1,6 @@
 ﻿namespace ObjectPool
 {
-    internal interface ITelemetryListener
+    public interface ITelemetryListener
     {
         void WriteActivatedEvent();
         void WriteActivateErrorEvent();
