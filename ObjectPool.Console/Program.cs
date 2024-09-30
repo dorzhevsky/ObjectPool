@@ -12,7 +12,7 @@ using System.Net;
 public class Program
 {
     static DbConnectionPool pool = new DbConnectionPool(
-        new Settings { MaxPoolSize = 100, WaitingTimeout = 10000, Name = "MyPool11", EvictionInterval = 2000 },
+        new Settings { MaxPoolSize = 100, WaitingTimeout = 10000, Name = "MyPool15", EvictionInterval = 2000 },
         () =>
         {
             var c = new ClickHouseConnection("SocketTimeout=1000000; ConnectionTimeout=10; Host=192.168.38.109; Port=43477; Database=; User=default; Password=123asdZXC@;");
