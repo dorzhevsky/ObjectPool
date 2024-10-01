@@ -30,7 +30,6 @@ public class Program
 
     public static void Main(string[] args)
     {
-
         using var provider 
         = Sdk.CreateMeterProviderBuilder()
              .AddMeter("ObjectPool")
