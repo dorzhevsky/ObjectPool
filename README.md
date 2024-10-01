@@ -13,17 +13,6 @@ Simple object pool with OpenTelemetry support
 You can use **DefaultObjectPool** class to create a pool of objects.
 **DefaultObjectPool** takes a bunch of settings and a factory
 
-| **Setting** | **About** |
-|:--|:--|
-| `Name` | Pool name. It is used for tagging telemetry metrics |
-| `MaxPoolSize` | Pool size |
-| `WaitingTimeout` | Number of milliseconds to wait for object renting from pool |
-| `EvictionInterval` | Object pool periodically (once per EvictionInterval milliseconds) evicts items from pool.  |
-| `EvictionTimeout` | If object from pool is not used for at least EvictionTimeout milliseconds it is considered as unusable and will be evicted|
-| `ConcurrencyFactor` | Setting for internal semaphore to control the number of concurrent rent tries|
-| `BackoffDelayMilliseconds` | |
-| `BackoffMaxDelayMilliseconds` | |
-
 ```cs
 DefaultObjectPool<StringBuilder> pool = new(new Settings 
 { 
@@ -34,6 +23,17 @@ DefaultObjectPool<StringBuilder> pool = new(new Settings
 },
 () => new StringBuilder());
 ```
+
+| **Setting** | **About** |
+|:--|:--|
+| `Name` | Pool name. It is used for tagging telemetry metrics |
+| `MaxPoolSize` | Pool size |
+| `WaitingTimeout` | Number of milliseconds to wait for object renting from pool |
+| `EvictionInterval` | Object pool periodically (once per EvictionInterval milliseconds) evicts items from pool.  |
+| `EvictionTimeout` | If object from pool is not used for at least EvictionTimeout milliseconds it is considered as unusable and will be evicted|
+| `ConcurrencyFactor` | Setting for internal semaphore to control the number of concurrent rent tries|
+| `BackoffDelayMilliseconds` | |
+| `BackoffMaxDelayMilliseconds` | |
 
 ### Database connection pooling
 
