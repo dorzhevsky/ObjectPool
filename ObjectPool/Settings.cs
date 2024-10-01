@@ -71,6 +71,7 @@
 
         public int BackoffDelayMilliseconds { get; set; }
         public int BackoffMaxDelayMilliseconds { get; set; }
+        public ITelemetryListener TelemetryListener { get; set; }
 
         public static Settings Default = new();
     }

@@ -19,11 +19,11 @@ namespace ObjectPool
         {
             _settings = settings;
 
-            _telemetry = new TelemetryListener(_settings.Name);
+            _telemetry = _settings.TelemetryListener ?? new TelemetryListener(_settings.Name);
             _slots = Enumerable.Repeat(0, _settings.MaxPoolSize).ToArray();
             _pooledObjects = Enumerable.Range(0, _settings.MaxPoolSize).Select(e => new PooledObject<T>(this, default!)).ToArray();
             _semaphore = new SemaphoreSlim(_settings.ConcurrencyFactor);
-            _evictionTimer = new Timer(Evict, this, 0, _settings.EvictionInterval);
+            _evictionTimer = new Timer(Evict, this, _settings.EvictionInterval, _settings.EvictionInterval);
         }
 
         public Task<PooledObject<T>> Get() => Get(CancellationToken.None);
@@ -32,7 +32,7 @@ namespace ObjectPool
         {
             var timedCancellationToken = cancellationToken.CancelAfter(_settings.WaitingTimeout);
 
-            using var _ = _lock.ReaderLock(cancellationToken);
+            using var _ = _lock.ReaderLock(timedCancellationToken);
 
             ThrowIfDisposed();
 
@@ -97,7 +97,9 @@ namespace ObjectPool
             Interlocked.CompareExchange(ref _slots[slot], 0, 1);
         }
 
-        public void Evict(object? state)
+        private void Evict(object? state) => Evict();
+
+        internal void Evict()
         {
             ThrowIfDisposed();
 
@@ -114,8 +116,7 @@ namespace ObjectPool
                     {
                         if (pooledObject!.Object is not null)
                         {
-                            if (pooledObject.LastUsedTimestamp.HasValue
-                                && (DateTime.UtcNow - pooledObject.LastUsedTimestamp.Value).TotalMilliseconds > _settings.EvictionTimeout)
+                            if (pooledObject.IsNotUsable(_settings))
                             {
                                 Deactivate(pooledObject.Object);
                             }
@@ -130,7 +131,7 @@ namespace ObjectPool
                         Interlocked.Exchange(ref _slots[i], 0);
                     }
                 }
-            }            
+            }
         }
 
         protected abstract T Create();
@@ -191,6 +192,7 @@ namespace ObjectPool
                             }
                             catch
                             {
+                                _telemetry.WriteDeactivateErrorEvent();
                             }
                         }
                     }

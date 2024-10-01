@@ -1,4 +1,6 @@
-﻿namespace ObjectPool
+﻿using System.Runtime;
+
+namespace ObjectPool
 {
     public class PooledObject<T> : IDisposable
     {
@@ -11,8 +13,10 @@
         }
 
         public void Dispose() => _objectPool.Release(Slot);
-        public T Object { get; set; }
-        public int Slot { get; internal set; }
+        public T Object { get; internal set; }
+        internal int Slot { get; set; }
         public DateTime? LastUsedTimestamp { get; internal set; }
+        internal bool IsNotUsable(Settings settings) => LastUsedTimestamp.HasValue
+                                && (DateTime.UtcNow - LastUsedTimestamp.Value).TotalMilliseconds > settings.EvictionTimeout;
     }
 }
