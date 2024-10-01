@@ -45,7 +45,7 @@ DbConnectionPool pool = new(
   new Settings { 
     MaxPoolSize = 100, 
     WaitingTimeout = 10000, 
-    Name = config["PoolName"]!, 
+    Name = "PoolName",
     EvictionInterval = 2000 
   },
   () => { return new ClickHouseConnection(config["Clickhouse"]); });
