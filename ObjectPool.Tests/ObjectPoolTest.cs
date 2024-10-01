@@ -45,6 +45,7 @@ namespace ObjectPool.Tests
         {
             DefaultObjectPool<StringBuilder> pool = new(new Settings { MaxPoolSize = 1, WaitingTimeout = 100 }, () => new StringBuilder());
             var obj = await pool.Get(CancellationToken.None);
+            obj.Object.Append("Some string");
             Assert.IsNotNull(obj);
             Assert.ThrowsAsync<ObjectPoolCancellationException>(async () =>
             {
