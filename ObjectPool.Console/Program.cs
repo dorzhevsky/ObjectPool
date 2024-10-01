@@ -49,7 +49,7 @@ public class Program
         t.Wait();
     }
 
-    static async Task<int> Fetch(int e)
+    static async Task<int> Fetch()
     {            
         using var connector = await pool.Get().ConfigureAwait(false);
         var command = connector.Object.CreateCommand();
@@ -68,7 +68,7 @@ public class Program
             {
                 var d = r.Next(10000);
                 await Task.Delay(d);
-                await Fetch(0);
+                await Fetch();
             });
             return thread;
         }).ToList();
