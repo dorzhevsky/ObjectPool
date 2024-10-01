@@ -5,6 +5,7 @@ namespace ObjectPool
     public abstract class ObjectPool<T> : IDisposable
     {
         private readonly Settings _settings;
+        private readonly Func<T> _factory;
         private readonly int[] _slots;
         private readonly PooledObject<T>?[] _pooledObjects;
         private readonly SemaphoreSlim _semaphore;
@@ -13,12 +14,12 @@ namespace ObjectPool
         private readonly AsyncReaderWriterLock _lock = new();
         private readonly ITelemetryListener _telemetry;
 
-        public ObjectPool() : this(Settings.Default) {}
+        public ObjectPool(Func<T> factory) : this(Settings.Default, factory) {}
 
-        public ObjectPool(Settings settings)
+        public ObjectPool(Settings settings, Func<T> factory)
         {
             _settings = settings;
-
+            _factory = factory;
             _telemetry = _settings.TelemetryListener ?? new TelemetryListener(_settings.Name);
             _slots = Enumerable.Repeat(0, _settings.MaxPoolSize).ToArray();
             _pooledObjects = Enumerable.Range(0, _settings.MaxPoolSize).Select(e => new PooledObject<T>(this, default!)).ToArray();
@@ -134,7 +135,7 @@ namespace ObjectPool
             }
         }
 
-        protected abstract T Create();
+        private T Create() => _factory();
         protected abstract Task Activate(T @object);
         protected abstract void Deactivate(T @object);
         protected void OnActivated() => _telemetry.WriteActivatedEvent();

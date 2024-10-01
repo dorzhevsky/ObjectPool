@@ -4,18 +4,9 @@ namespace ObjectPool
 {
     public class DbConnectionPool : ObjectPool<DbConnection>
     {
-        private readonly Func<DbConnection> _connectionFactory;
-
         public DbConnectionPool(Settings settings, Func<DbConnection> connectionFactory)
-            : base(settings)
+            : base(settings, connectionFactory)
         {
-            _connectionFactory = connectionFactory;
-        }
-
-        protected override DbConnection Create()
-        {
-            var connection = _connectionFactory();
-            return connection;
         }
 
         protected override Task Activate(DbConnection connection)

@@ -10,12 +10,36 @@ Simple object pool with OpenTelemetry support
 
 ### Simple object pooling
 
+You can use **DefaultObjectPool** class to create a pool of objects.
+**DefaultObjectPool** takes a bunch of settings and a factory
+
+| **Setting** | **About** |
+|:--|:--|
+| `Name` | Pool name. It is used for tagging telemetry metrics |
+| `MaxPoolSize` | Pool size |
+| `WaitingTimeout` | Number of milliseconds to wait for object renting from pool |
+| `EvictionInterval` | Object pool periodically (once per EvictionInterval milliseconds) evicts items from pool.  |
+| `EvictionTimeout` | If object from pool is not used for at least EvictionTimeout milliseconds it is considered as unusable and will be evicted|
+| `ConcurrencyFactor` | Setting for internal semaphore to control the number of concurrent rent tries|
+| `BackoffDelayMilliseconds` | |
+| `BackoffMaxDelayMilliseconds` | |
+
+```cs
+DefaultObjectPool<StringBuilder> pool = new(new Settings 
+{ 
+    MaxPoolSize = 100, 
+    WaitingTimeout = 10000, 
+    Name = config["PoolName"]!, 
+    EvictionInterval = 2000 
+},
+() => new StringBuilder());
+```
+
 ### Database connection pooling
 
-To create database connection pool, you must create an instance of **DbConnectionPool** class passing a bunch on configuration settings and a factory which returns **System.Data.Common.DbConnection**
+To create database connection pool, you must create an instance of **DbConnectionPool**. It is responsible for opening and closing database conections
 
 
-<!-- snippet: quick-start -->
 ```cs
 DbConnectionPool pool = new(
   new Settings { 
@@ -26,25 +50,20 @@ DbConnectionPool pool = new(
   },
   () => { return new ClickHouseConnection(config["Clickhouse"]); });
 ```
-<!-- endSnippet -->
 
 To rent a connection from pool use **Get** method as follows:
 
-<!-- snippet: quick-start -->
 ```cs
 using var connector = await pool.Get().ConfigureAwait(false);
 ```
-<!-- endSnippet -->
 
 **Get** method returns a so called connector object. When done, you must dispose connector object to return rented connection to connection pool. You can use its **Object** property to gain acccess to underlying connection and execute database queries:
 
-<!-- snippet: quick-start -->
 ```cs
 var command = connector.Object.CreateCommand();
 command.CommandText = "SELECT 1";
 byte? result = (byte?)command.ExecuteScalar();
 ```
-<!-- endSnippet -->
 
 When connection pool is no longer needed, please destroy it with **Dispose** method to clean up resources
 

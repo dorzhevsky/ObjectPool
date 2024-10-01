@@ -14,7 +14,7 @@ namespace ObjectPool.Tests
             {
                 EvictionInterval = Timeout.Infinite,
                 TelemetryListener = telemetryListener
-            });
+            }, () => new StringBuilder());
             var _ = await pool.Get();
             Assert.IsTrue(telemetryListener.WriteActivatedEventCalled);
         }
@@ -26,7 +26,7 @@ namespace ObjectPool.Tests
             {
                 EvictionInterval = Timeout.Infinite,
                 TelemetryListener = telemetryListener
-            });
+            }, () => new StringBuilder());
             CancellationTokenSource cancellationTokenSource = new();
             cancellationTokenSource.Cancel();
             Assert.ThrowsAsync<ObjectPoolCancellationException>(async () =>
@@ -64,7 +64,7 @@ namespace ObjectPool.Tests
                 EvictionInterval = Timeout.Infinite,
                 TelemetryListener = telemetryListener,
                 EvictionTimeout = 0
-            });
+            }, () => new StringBuilder());
             var connector = await pool.Get();
             connector.Dispose();
             pool.Evict();
@@ -79,7 +79,7 @@ namespace ObjectPool.Tests
             {
                 EvictionInterval = Timeout.Infinite,
                 TelemetryListener = telemetryListener
-            });
+            }, () => new StringBuilder());
             var connector = await pool.Get();
             connector.Dispose();
             pool.Dispose();

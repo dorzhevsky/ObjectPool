@@ -2,19 +2,18 @@
 
 namespace ObjectPool.Tests.Utils
 {
-    public class ErrorObjectPool<T> : ObjectPool<T> where T : class, new()
+    public class ErrorObjectPool<T> : DefaultObjectPool<T> where T : class, new()
     {
         private readonly Action<T>? _activator;
         private readonly Action<T>? _deactivator;
 
-        public ErrorObjectPool(Settings settings, Action<T>? activator = null, Action<T>? deactivator = null) : base(settings)
+        public ErrorObjectPool(
+            Settings settings,
+            Action<T>? activator = null,
+            Action<T>? deactivator = null) : base(settings, () => new T())
         {
             _activator = activator;
             _deactivator = deactivator;
-        }
-        protected override T Create()
-        {
-            return new T();
         }
 
         protected override Task Activate(T @object)
