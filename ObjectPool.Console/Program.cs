@@ -1,4 +1,5 @@
 ﻿using ClickHouse.Ado;
+using Microsoft.Extensions.Configuration;
 using ObjectPool;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -7,36 +8,34 @@ using OpenTelemetry.Trace;
 
 public class Program
 {
-    static readonly string connectionString
-        = "SocketTimeout=1000000; ConnectionTimeout=10; Host=192.168.38.109; Port=43477; Database=; User=default; Password=123asdZXC@;";
+    static DbConnectionPool? pool;
 
-    static readonly string prometheusEndpoint 
-        = "http://localhost:9090/api/v1/otlp/v1/metrics";
+    public static void Main(string[] args)
+    {
+        var builder = new ConfigurationBuilder()
+                 .AddJsonFile($"appsettings.json", true, true);
 
-    static readonly string poolName = "MyPool16";
+        var config = builder.Build();
 
-    static readonly DbConnectionPool pool = new(
-        new Settings
+        pool = new(new Settings
         {
             MaxPoolSize = 100,
             WaitingTimeout = 10000,
-            Name = poolName,
+            Name = config["PoolName"]!,
             EvictionInterval = 2000
         },
         () =>
         {
-            return new ClickHouseConnection(connectionString);
-        });     
+            return new ClickHouseConnection(config["Clickhouse"]);
+        });
 
-    public static void Main(string[] args)
-    {
         using var provider 
         = Sdk.CreateMeterProviderBuilder()
              .AddMeter("ObjectPool")
              .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("ObjectPool.Console"))
              .AddOtlpExporter((exporterOptions, metricReaderOptions) =>
              {
-                 exporterOptions.Endpoint = new Uri(prometheusEndpoint);
+                 exporterOptions.Endpoint = new Uri(config["Prometheus"]!);
                  exporterOptions.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
                  exporterOptions.ExportProcessorType = ExportProcessorType.Simple;
                  metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 5000;
