@@ -60,5 +60,7 @@ Object pool uses metrics from **System.Diagnostics** which are usable for monito
 | `pool_deactivate_errors` | Number of deactivation errors |
 | `pool_cancellations` | Number of cancellations |
 
+All metrics are tagged with the name of the pool
+
 
 
