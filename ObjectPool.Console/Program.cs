@@ -12,22 +12,12 @@ public class Program
 
     public static void Main(string[] args)
     {
-        var builder = new ConfigurationBuilder()
-                 .AddJsonFile($"appsettings.json", true, true);
+        var builder = new ConfigurationBuilder().AddJsonFile($"appsettings.json", true, true);
 
         var config = builder.Build();
 
-        pool = new(new Settings
-        {
-            MaxPoolSize = 100,
-            WaitingTimeout = 10000,
-            Name = config["PoolName"]!,
-            EvictionInterval = 2000
-        },
-        () =>
-        {
-            return new ClickHouseConnection(config["Clickhouse"]);
-        });
+        pool = new(new Settings { MaxPoolSize = 100, WaitingTimeout = 10000, Name = config["PoolName"]!, EvictionInterval = 2000 },
+        () => { return new ClickHouseConnection(config["Clickhouse"]); });
 
         using var provider 
         = Sdk.CreateMeterProviderBuilder()
