@@ -31,7 +31,7 @@ DefaultObjectPool<StringBuilder> pool = new(new Settings
 | `WaitingTimeout` | Number of milliseconds to wait for object renting from pool |
 | `EvictionInterval` | Object pool periodically (once per EvictionInterval milliseconds) evicts items from pool.  |
 | `EvictionTimeout` | If object from pool is not used for at least EvictionTimeout milliseconds it is considered as unusable and will be evicted|
-| `ConcurrencyFactor` | Setting for internal semaphore to control the number of concurrent rent tries|
+| `ConcurrencyFactor` | Setting for internal semaphore to control concurrency|
 | `BackoffDelayMilliseconds` | |
 | `BackoffMaxDelayMilliseconds` | |
 
