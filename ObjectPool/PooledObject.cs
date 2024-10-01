@@ -15,7 +15,7 @@ namespace ObjectPool
         public void Dispose() => _objectPool.Release(Slot);
         public T Object { get; internal set; }
         internal int Slot { get; set; }
-        public DateTime? LastUsedTimestamp { get; internal set; }
+        internal DateTime? LastUsedTimestamp { get; set; }
         internal bool IsNotUsable(Settings settings) => LastUsedTimestamp.HasValue
                                 && (DateTime.UtcNow - LastUsedTimestamp.Value).TotalMilliseconds > settings.EvictionTimeout;
     }
