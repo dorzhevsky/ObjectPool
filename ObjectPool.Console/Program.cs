@@ -19,20 +19,20 @@ public class Program
         pool = new(new Settings { MaxPoolSize = 100, WaitingTimeout = 10000, Name = config["PoolName"]!, EvictionInterval = 2000 },
         () => { return new ClickHouseConnection(config["Clickhouse"]); });
 
-        using var provider 
-        = Sdk.CreateMeterProviderBuilder()
-             .AddMeter("ObjectPool")
-             .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("ObjectPool.Console"))
-             .AddOtlpExporter((exporterOptions, metricReaderOptions) =>
-             {
-                 exporterOptions.Endpoint = new Uri(config["Prometheus"]!);
-                 exporterOptions.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
-                 exporterOptions.ExportProcessorType = ExportProcessorType.Simple;
-                 metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 5000;
-             
-             })
-             .AddConsoleExporter()
-             .Build();
+        using var provider  = 
+        Sdk.CreateMeterProviderBuilder()
+           .AddMeter("ObjectPool")
+           .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("ObjectPool.Console"))
+           .AddOtlpExporter((exporterOptions, metricReaderOptions) =>
+           {
+               exporterOptions.Endpoint = new Uri(config["Prometheus"]!);
+               exporterOptions.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+               exporterOptions.ExportProcessorType = ExportProcessorType.Simple;
+               metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 5000;
+            
+           })
+           .AddConsoleExporter()
+           .Build();
 
         Task t = MainAsync(args);
         t.Wait();
@@ -40,7 +40,7 @@ public class Program
 
     static async Task<int> Fetch()
     {            
-        using var connector = await pool.Get().ConfigureAwait(false);
+        using var connector = await pool!.Get().ConfigureAwait(false);
         var command = connector.Object.CreateCommand();
         command.CommandText = "SELECT 1";
         byte? result = (byte?)command.ExecuteScalar();
