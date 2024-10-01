@@ -30,10 +30,22 @@ DefaultObjectPool<StringBuilder> pool = new(new Settings
 | `MaxPoolSize` | Pool size |
 | `WaitingTimeout` | Number of milliseconds to wait for object renting from pool |
 | `EvictionInterval` | Object pool periodically (once per EvictionInterval milliseconds) evicts items from pool.  |
-| `EvictionTimeout` | If object from pool is not used for at least EvictionTimeout milliseconds it is considered as unusable and will be evicted|
+| `EvictionTimeout` | If pooled object is not used for at least EvictionTimeout milliseconds it is considered as unusable and will be evicted|
 | `ConcurrencyFactor` | Setting for internal semaphore to control concurrency|
 | `BackoffDelayMilliseconds` | |
 | `BackoffMaxDelayMilliseconds` | |
+
+To rent an object from pool use **Get** method as follows:
+
+```cs
+using var pooledObject = await pool.Get().ConfigureAwait(false);
+```
+
+**Get** method returns a so called pooled object. When done, you must dispose pooled object to return rented object to the pool. You can use its **Object** property to gain acccess to underlying object:
+
+```cs
+pooledObject.Object.Append("Some string");
+```
 
 ### Database connection pooling
 
@@ -57,7 +69,7 @@ To rent a connection from pool use **Get** method as follows:
 using var connector = await pool.Get().ConfigureAwait(false);
 ```
 
-**Get** method returns a so called connector object. When done, you must dispose connector object to return rented connection to connection pool. You can use its **Object** property to gain acccess to underlying connection and execute database queries:
+To execute database commands you should use **Object** property to gain acccess to underlying database connection:
 
 ```cs
 var command = connector.Object.CreateCommand();
